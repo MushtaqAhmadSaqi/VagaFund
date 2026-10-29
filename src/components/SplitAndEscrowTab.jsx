@@ -7,7 +7,8 @@ import {
   X,
   Trophy,
   AlertTriangle,
-  Lock
+  Lock,
+  Sparkles
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { api } from '../lib/supabase.js';
@@ -20,9 +21,19 @@ import {
   formatRelativeTime,
   PEG_PKR_PER_VGC
 } from '../lib/format.js';
-import { Modal, Badge, ProgressBar, PinInput, EmptyState, Spinner, useToast } from './ui.jsx';
+import {
+  Modal,
+  Badge,
+  ProgressBar,
+  PinInput,
+  EmptyState,
+  Spinner,
+  useToast,
+  Avatar,
+  AmountPresets
+} from './ui.jsx';
 
-const MATCH_SUGGESTIONS = ['Table Tennis Bo5', 'Chess Blitz', 'Carrom', 'FIFA 1v1', 'Padel Tiebreak'];
+const MATCH_SUGGESTIONS = ['Table Tennis Bo5 🏓', 'Chess Blitz ♟️', 'Carrom 🎯', 'FIFA 1v1 ⚽', 'Padel Tiebreak 🎾'];
 
 export default function SplitAndEscrowTab({
   currentUser,
@@ -68,35 +79,38 @@ export default function SplitAndEscrowTab({
   const [includeCreator, setIncludeCreator] = useState(true);
   const [creatingSplit, setCreatingSplit] = useState(false);
 
-  // Pay Split Share PIN Modal State
-  const [payShareTarget, setPayShareTarget] = useState(null);
+  // Pay Share Modal State
+  const [payShareTarget, setPayShareTarget] = useState(null); // { split, participant }
   const [payPin, setPayPin] = useState('');
   const [payingShare, setPayingShare] = useState(false);
 
   // New Escrow Match Modal State
   const [newMatchOpen, setNewMatchOpen] = useState(false);
-  const [matchTitle, setMatchTitle] = useState('Table Tennis Bo5');
+  const [matchTitle, setMatchTitle] = useState('Table Tennis Bo5 🏓');
   const [matchWager, setMatchWager] = useState('');
   const [matchOpponentId, setMatchOpponentId] = useState('');
   const [creatingMatch, setCreatingMatch] = useState(false);
+
+  // Busy action tracker for match responses
   const [busyMatchId, setBusyMatchId] = useState(null);
 
-  const liveSharesPreview = useMemo(
-    () => computeSplitShares(splitTotal, selectedFriends, currentUser?.id, includeCreator),
-    [splitTotal, selectedFriends, currentUser, includeCreator]
-  );
-
-  const toggleFriendSelection = (fid) => {
+  const toggleFriendSelection = (uid) => {
     setSelectedFriends((prev) =>
-      prev.includes(fid) ? prev.filter((x) => x !== fid) : [...prev, fid]
+      prev.includes(uid) ? prev.filter((id) => id !== uid) : [...prev, uid]
     );
   };
+
+  const liveSharesPreview = useMemo(() => {
+    const total = parsePositiveInt(splitTotal);
+    if (!total || selectedFriends.length === 0) return [];
+    return computeSplitShares(total, selectedFriends, currentUser?.id, includeCreator);
+  }, [splitTotal, selectedFriends, includeCreator, currentUser]);
 
   const handleCreateSplit = async (e) => {
     e.preventDefault();
     const total = parsePositiveInt(splitTotal);
     if (!splitTitle.trim()) {
-      addToast('Enter a title for the bill split.', 'error');
+      addToast('Enter a title for the expense.', 'error');
       return;
     }
     if (!total) {
@@ -114,7 +128,7 @@ export default function SplitAndEscrowTab({
       if (!res.ok) {
         addToast(res.message || 'Could not create split', 'error');
       } else {
-        addToast(res.message || 'Split created!', 'success');
+        addToast(res.message || 'Split created successfully!', 'success');
         setNewSplitOpen(false);
         onRefresh?.();
       }
@@ -137,7 +151,7 @@ export default function SplitAndEscrowTab({
         addToast(res.message || 'Failed to pay share', 'error');
         setPayPin('');
       } else {
-        addToast(res.message || 'Share paid!', 'success');
+        addToast(res.message || 'Share paid successfully!', 'success');
         setPayShareTarget(null);
         setPayPin('');
         onRefresh?.();
@@ -181,17 +195,17 @@ export default function SplitAndEscrowTab({
       return;
     }
     if (!matchOpponentId) {
-      addToast('Choose an opponent.', 'error');
+      addToast('Select an opponent to challenge.', 'error');
       return;
     }
 
     setCreatingMatch(true);
     try {
-      const res = await api.createEscrowMatch(matchTitle, wager, matchOpponentId);
+      const res = await api.createEscrowMatch(matchOpponentId, matchTitle, wager);
       if (!res.ok) {
-        addToast(res.message || 'Failed to create match', 'error');
+        addToast(res.message || 'Could not create match', 'error');
       } else {
-        addToast(res.message || 'Match created!', 'success');
+        addToast(res.message || '1v1 challenge sent! Stakes locked in escrow.', 'success');
         setNewMatchOpen(false);
         onRefresh?.();
       }
@@ -206,7 +220,7 @@ export default function SplitAndEscrowTab({
       const res = await api.acceptEscrowMatch(matchId);
       if (!res.ok) addToast(res.message || 'Could not accept match', 'error');
       else {
-        addToast(res.message || 'Match accepted!', 'success');
+        addToast(res.message || 'Match accepted! Stakes locked in escrow.', 'success');
         onRefresh?.();
       }
     } finally {
@@ -220,7 +234,7 @@ export default function SplitAndEscrowTab({
       const res = await api.cancelEscrowMatch(matchId);
       if (!res.ok) addToast(res.message || 'Could not cancel match', 'error');
       else {
-        addToast(res.message || 'Match cancellation updated.', 'info');
+        addToast('Match cancellation updated.', 'info');
         onRefresh?.();
       }
     } finally {
@@ -242,7 +256,7 @@ export default function SplitAndEscrowTab({
             // ignore
           }
         }
-        addToast(res.message || 'Result reported!', res.disputed ? 'error' : 'success');
+        addToast(res.message || 'Result recorded!', res.disputed ? 'error' : 'success');
         onRefresh?.();
       }
     } finally {
@@ -269,13 +283,13 @@ export default function SplitAndEscrowTab({
   return (
     <div className="space-y-6">
       {/* SUB-TAB SWITCHER */}
-      <div className="grid grid-cols-2 gap-2 p-1.5 bg-slate-900 border border-slate-800 rounded-2xl">
+      <div className="grid grid-cols-2 gap-2 p-1.5 bg-slate-900/90 border border-slate-800 rounded-3xl shadow-inner">
         <button
           type="button"
           onClick={() => setSubTab('splits')}
-          className={`flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
+          className={`flex items-center justify-center gap-2 py-3 px-4 rounded-2xl text-xs sm:text-sm font-bold transition-all ${
             subTab === 'splits'
-              ? 'bg-emerald-600 text-white shadow'
+              ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-950/50 scale-[1.01]'
               : 'text-slate-400 hover:text-slate-200'
           }`}
         >
@@ -286,9 +300,9 @@ export default function SplitAndEscrowTab({
         <button
           type="button"
           onClick={() => setSubTab('escrow')}
-          className={`flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
+          className={`flex items-center justify-center gap-2 py-3 px-4 rounded-2xl text-xs sm:text-sm font-bold transition-all ${
             subTab === 'escrow'
-              ? 'bg-emerald-600 text-white shadow'
+              ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-950/50 scale-[1.01]'
               : 'text-slate-400 hover:text-slate-200'
           }`}
         >
@@ -299,11 +313,11 @@ export default function SplitAndEscrowTab({
 
       {subTab === 'splits' ? (
         <div className="space-y-6">
-          <div className="flex items-center justify-between bg-slate-900 border border-slate-800 rounded-2xl p-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900/80 border border-slate-800/90 rounded-3xl p-5 shadow-xl">
             <div>
-              <h3 className="text-sm font-semibold text-white">Split a Group Bill</h3>
-              <p className="text-xs text-slate-400">
-                Exact integer remainder math guarantees shares sum 100% to the bill total.
+              <h3 className="text-base font-bold text-white tracking-tight">Split a Group Bill</h3>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Exact integer remainder distribution guarantees shares sum 100% to the bill total.
               </p>
             </div>
             <button
@@ -316,51 +330,54 @@ export default function SplitAndEscrowTab({
                 setNewSplitOpen(true);
               }}
               disabled={!currentUser?.is_active}
-              className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white text-xs font-semibold rounded-xl flex items-center gap-1.5 shrink-0"
+              className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:scale-95 disabled:opacity-40 text-white text-xs font-bold rounded-2xl flex items-center gap-2 shadow-lg shadow-emerald-950/50 shrink-0 transition-all"
             >
               <Plus className="w-4 h-4" />
-              <span>New Split</span>
+              <span>Create New Split</span>
             </button>
           </div>
 
           {/* I OWE SECTION */}
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-3">
-            <h4 className="text-sm font-semibold text-slate-200">Shares I Owe</h4>
+          <div className="bg-slate-900/80 border border-slate-800/90 rounded-3xl p-5 sm:p-6 space-y-4 shadow-xl">
+            <h4 className="text-base font-bold text-white tracking-tight">Shares I Owe</h4>
             {iOweItems.length === 0 ? (
               <EmptyState title="You don't owe any split shares" description="When friends include you in a bill split, it will show up here." />
             ) : (
-              <div className="space-y-2.5">
+              <div className="space-y-3">
                 {iOweItems.map(({ split, participant }) => {
                   const creator = profilesById[split.creator_id];
                   const isPending = participant.status === 'PENDING' && split.status === 'OPEN';
                   return (
                     <div
                       key={participant.id}
-                      className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-slate-950/80 border border-slate-800"
+                      className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-slate-950/80 border border-slate-800 hover:border-slate-700 transition-all"
                     >
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-semibold text-white">{split.title}</span>
-                          <Badge
-                            variant={
-                              participant.status === 'PAID'
-                                ? 'success'
-                                : participant.status === 'PENDING'
-                                ? 'warning'
-                                : 'danger'
-                            }
-                          >
-                            {participant.status}
-                          </Badge>
-                        </div>
-                        <div className="text-xs text-slate-400">
-                          Paid by <strong className="text-slate-200">{creator?.full_name || 'Member'}</strong> • Total bill:{' '}
-                          <span className="font-mono">{formatVGC(split.total_amount)}</span> •{' '}
-                          {formatRelativeTime(split.created_at)}
+                      <div className="flex items-center gap-3">
+                        <Avatar name={creator?.full_name} id={split.creator_id} size="md" />
+                        <div className="space-y-0.5">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-bold text-white">{split.title}</span>
+                            <Badge
+                              variant={
+                                participant.status === 'PAID'
+                                  ? 'success'
+                                  : participant.status === 'PENDING'
+                                  ? 'warning'
+                                  : 'danger'
+                              }
+                            >
+                              {participant.status}
+                            </Badge>
+                          </div>
+                          <div className="text-xs text-slate-400">
+                            Paid by <strong className="text-slate-200">{creator?.full_name || 'Member'}</strong> • Total bill:{' '}
+                            <span className="font-mono">{formatVGC(split.total_amount)}</span> •{' '}
+                            {formatRelativeTime(split.created_at)}
+                          </div>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
                         {isPending ? (
                           <>
                             <button
@@ -369,7 +386,7 @@ export default function SplitAndEscrowTab({
                                 setPayShareTarget({ split, participant });
                                 setPayPin('');
                               }}
-                              className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl flex items-center gap-1.5"
+                              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 shadow transition-all active:scale-95"
                             >
                               <Check className="w-3.5 h-3.5" />
                               <span>Pay {formatVGC(participant.share_amount)}</span>
@@ -377,13 +394,13 @@ export default function SplitAndEscrowTab({
                             <button
                               type="button"
                               onClick={() => handleDeclineShare(participant.id)}
-                              className="px-2.5 py-2 bg-slate-800 hover:bg-rose-950/60 text-slate-300 hover:text-rose-200 text-xs font-medium rounded-xl border border-slate-700"
+                              className="px-3 py-2 bg-slate-800 hover:bg-rose-950/60 text-slate-300 hover:text-rose-200 text-xs font-semibold rounded-xl border border-slate-700 transition-colors"
                             >
                               Decline
                             </button>
                           </>
                         ) : (
-                          <div className="text-sm font-mono font-bold text-slate-300">
+                          <div className="text-base font-mono font-bold text-slate-200">
                             {formatVGC(participant.share_amount)}
                           </div>
                         )}
@@ -396,10 +413,10 @@ export default function SplitAndEscrowTab({
           </div>
 
           {/* OWED TO ME SECTION */}
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-3">
-            <h4 className="text-sm font-semibold text-slate-200">Splits Owed to Me</h4>
+          <div className="bg-slate-900/80 border border-slate-800/90 rounded-3xl p-5 sm:p-6 space-y-4 shadow-xl">
+            <h4 className="text-base font-bold text-white tracking-tight">Splits Created by Me</h4>
             {owedToMeSplits.length === 0 ? (
-              <EmptyState title="No splits created by you yet" description="Create a split when you pay for a group meal or outing." />
+              <EmptyState title="No splits created by you yet" description="Create a split when you pay for a group meal, venue, or outing." />
             ) : (
               <div className="space-y-3">
                 {owedToMeSplits.map((split) => {
@@ -412,12 +429,12 @@ export default function SplitAndEscrowTab({
                   return (
                     <div
                       key={split.id}
-                      className="p-4 rounded-xl bg-slate-950/80 border border-slate-800 space-y-3"
+                      className="p-4 sm:p-5 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-3"
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div>
                           <div className="flex items-center gap-2">
-                            <span className="text-sm font-semibold text-white">{split.title}</span>
+                            <span className="text-base font-bold text-white">{split.title}</span>
                             <Badge
                               variant={
                                 split.status === 'COMPLETED'
@@ -440,7 +457,7 @@ export default function SplitAndEscrowTab({
                           <button
                             type="button"
                             onClick={() => handleCancelSplit(split.id)}
-                            className="px-2.5 py-1 text-xs rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300"
+                            className="px-3 py-1 text-xs font-semibold rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
                           >
                             Cancel Split
                           </button>
@@ -449,34 +466,32 @@ export default function SplitAndEscrowTab({
 
                       <ProgressBar
                         value={paidSoFar}
-                        max={totalCollectible || 1}
+                        max={totalCollectible}
                         label={`Collected ${formatVGC(paidSoFar)} of ${formatVGC(totalCollectible)}`}
                       />
 
-                      <div className="flex flex-wrap gap-2 pt-1">
-                        {parts.map((pt) => {
-                          const friend = profilesById[pt.user_id];
-                          return (
-                            <div
-                              key={pt.id}
-                              className="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-xs flex items-center gap-2"
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+                        {parts.map((p) => (
+                          <div
+                            key={p.id}
+                            className="p-2.5 rounded-xl bg-slate-900 border border-slate-800/80 flex items-center justify-between text-xs"
+                          >
+                            <span className="text-slate-300 truncate mr-2">
+                              {profilesById[p.user_id]?.full_name?.split(' ')[0] || 'Friend'}
+                            </span>
+                            <span
+                              className={`font-mono font-bold ${
+                                p.status === 'PAID'
+                                  ? 'text-emerald-400'
+                                  : p.status === 'DECLINED'
+                                  ? 'text-rose-400 line-through'
+                                  : 'text-amber-400'
+                              }`}
                             >
-                              <span className="text-slate-200">{friend?.full_name || 'Member'}</span>
-                              <span className="font-mono text-slate-400">{formatVGC(pt.share_amount)}</span>
-                              <Badge
-                                variant={
-                                  pt.status === 'PAID'
-                                    ? 'success'
-                                    : pt.status === 'PENDING'
-                                    ? 'warning'
-                                    : 'danger'
-                                }
-                              >
-                                {pt.status}
-                              </Badge>
-                            </div>
-                          );
-                        })}
+                              {formatVGC(p.share_amount)}
+                            </span>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   );
@@ -486,28 +501,25 @@ export default function SplitAndEscrowTab({
           </div>
         </div>
       ) : (
-        /* 1V1 MATCH ESCROW SUB-TAB */
+        /* ESCROW MATCHES SUBTAB */
         <div className="space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900 border border-slate-800 rounded-2xl p-4">
-            <div className="space-y-1">
-              <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-                <Swords className="w-4 h-4 text-emerald-400" />
-                <span>1v1 Match Escrow Arena</span>
-              </h3>
-              <p className="text-xs text-slate-400">
-                Locked stakes are immediately deducted from Available VGC ({formatVGC(myBalance.locked_in_escrow)} currently locked).
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900/80 border border-slate-800/90 rounded-3xl p-5 shadow-xl">
+            <div>
+              <h3 className="text-base font-bold text-white tracking-tight">1v1 Match Escrow Stakes</h3>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Stakes are securely held in smart escrow until both players verify the winner.
               </p>
             </div>
             <button
               type="button"
               onClick={() => {
-                setMatchTitle('Table Tennis Bo5');
+                setMatchTitle('Table Tennis Bo5 🏓');
                 setMatchWager('');
                 setMatchOpponentId(activeFriends[0]?.id || '');
                 setNewMatchOpen(true);
               }}
               disabled={!currentUser?.is_active}
-              className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white text-xs font-semibold rounded-xl flex items-center gap-1.5 shrink-0"
+              className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:scale-95 disabled:opacity-40 text-white text-xs font-bold rounded-2xl flex items-center gap-2 shadow-lg shadow-emerald-950/50 shrink-0 transition-all"
             >
               <Plus className="w-4 h-4" />
               <span>Create 1v1 Match</span>
@@ -538,9 +550,9 @@ export default function SplitAndEscrowTab({
                 return (
                   <div
                     key={m.id}
-                    className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-3.5"
+                    className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-4 shadow-xl"
                   >
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="text-base font-bold text-white">{m.title}</span>
@@ -560,16 +572,18 @@ export default function SplitAndEscrowTab({
                             {m.status}
                           </Badge>
                         </div>
-                        <div className="text-xs text-slate-400 mt-0.5">
-                          <strong className="text-slate-200">{creator?.full_name || 'Creator'}</strong> vs{' '}
-                          <strong className="text-slate-200">{opponent?.full_name || 'Opponent'}</strong> •{' '}
-                          {formatRelativeTime(m.created_at)}
+                        <div className="text-xs text-slate-400 mt-1 flex items-center gap-2">
+                          <strong className="text-slate-200">{creator?.full_name || 'Creator'}</strong>
+                          <span className="text-amber-400 font-bold">vs</span>
+                          <strong className="text-slate-200">{opponent?.full_name || 'Opponent'}</strong>
+                          <span>•</span>
+                          <span>{formatRelativeTime(m.created_at)}</span>
                         </div>
                       </div>
 
                       <div className="text-left sm:text-right">
                         <div className="text-xs text-slate-400">Total Escrow Pot</div>
-                        <div className="text-base font-mono font-bold text-emerald-400">
+                        <div className="text-lg font-mono font-extrabold text-emerald-400">
                           {formatVGC(Number(m.wager_amount) * 2)}{' '}
                           <span className="text-xs font-normal text-slate-400">
                             ({formatVGC(m.wager_amount)} each)
@@ -585,7 +599,7 @@ export default function SplitAndEscrowTab({
                         return (
                           <div
                             key={st}
-                            className={`text-center py-1 rounded-lg text-[11px] font-mono font-semibold border ${
+                            className={`text-center py-1.5 rounded-xl text-[11px] font-mono font-semibold border ${
                               active
                                 ? st === 'DISPUTED'
                                   ? 'bg-rose-500/15 border-rose-500/40 text-rose-300'
@@ -601,13 +615,13 @@ export default function SplitAndEscrowTab({
 
                     {/* LOCKED STAKE STATUS */}
                     {['OPEN', 'LOCKED', 'DISPUTED'].includes(m.status) && (
-                      <div className="flex flex-wrap items-center gap-3 text-xs bg-slate-950/80 border border-slate-800/80 rounded-xl px-3 py-2">
-                        <span className="flex items-center gap-1 text-amber-300">
+                      <div className="flex flex-wrap items-center gap-3 text-xs bg-slate-950/80 border border-slate-800/80 rounded-2xl px-3.5 py-2.5">
+                        <span className="flex items-center gap-1.5 text-amber-300">
                           <Lock className="w-3.5 h-3.5" />
                           {creator?.full_name}: {formatVGC(m.wager_amount)} locked
                         </span>
                         <span className="text-slate-600">•</span>
-                        <span className="flex items-center gap-1 text-amber-300">
+                        <span className="flex items-center gap-1.5 text-amber-300">
                           <Lock className="w-3.5 h-3.5" />
                           {opponent?.full_name}:{' '}
                           {m.status === 'OPEN' ? 'Waiting to accept' : `${formatVGC(m.wager_amount)} locked`}
@@ -623,7 +637,7 @@ export default function SplitAndEscrowTab({
                             type="button"
                             disabled={busyMatchId === m.id}
                             onClick={() => handleAcceptMatch(m.id)}
-                            className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl flex items-center gap-1.5"
+                            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-xs font-bold rounded-xl flex items-center gap-2 shadow"
                           >
                             {busyMatchId === m.id && <Spinner />}
                             <span>Accept & Lock {formatVGC(m.wager_amount)}</span>
@@ -634,7 +648,7 @@ export default function SplitAndEscrowTab({
                             type="button"
                             disabled={busyMatchId === m.id}
                             onClick={() => handleCancelMatch(m.id)}
-                            className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium rounded-xl"
+                            className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-xl"
                           >
                             Cancel Challenge
                           </button>
@@ -662,7 +676,7 @@ export default function SplitAndEscrowTab({
                             type="button"
                             disabled={busyMatchId === m.id}
                             onClick={() => handleReportResult(m.id, currentUser.id)}
-                            className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl flex items-center gap-1.5"
+                            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 shadow"
                           >
                             <Trophy className="w-3.5 h-3.5" />
                             <span>I Won (+{formatVGC(m.wager_amount)})</span>
@@ -676,7 +690,7 @@ export default function SplitAndEscrowTab({
                                 m.creator_id === currentUser.id ? m.opponent_id : m.creator_id
                               )
                             }
-                            className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-slate-700"
+                            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-slate-700"
                           >
                             They Won
                           </button>
@@ -684,7 +698,7 @@ export default function SplitAndEscrowTab({
                             type="button"
                             disabled={busyMatchId === m.id}
                             onClick={() => handleCancelMatch(m.id)}
-                            className="px-3 py-2 bg-slate-900 hover:bg-slate-800 text-slate-400 text-xs rounded-xl border border-slate-800"
+                            className="px-3 py-2 bg-slate-950 hover:bg-slate-800 text-slate-400 text-xs rounded-xl border border-slate-800"
                           >
                             Mutual Cancel
                           </button>
@@ -693,17 +707,17 @@ export default function SplitAndEscrowTab({
                     )}
 
                     {m.status === 'DISPUTED' && (
-                      <div className="flex items-center gap-2 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-xs text-rose-200">
+                      <div className="flex items-center gap-2 p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-xs text-rose-200">
                         <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
                         <span>
                           Disputed — conflicting reports submitted ({profilesById[m.creator_report]?.full_name || '?'} vs{' '}
-                          {profilesById[m.opponent_report]?.full_name || '?'}). Admin will decide in the Admin Panel.
+                          {profilesById[m.opponent_report]?.full_name || '?'}). Admin will adjudicate in the Admin Panel.
                         </span>
                       </div>
                     )}
 
                     {m.status === 'SETTLED' && winner && (
-                      <div className="flex items-center gap-2 text-xs text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 px-3 py-2 rounded-xl">
+                      <div className="flex items-center gap-2 text-xs text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 px-4 py-2.5 rounded-2xl">
                         <Trophy className="w-4 h-4 text-emerald-400" />
                         <span>
                           Winner: <strong>{winner.full_name}</strong> (+{formatVGC(m.wager_amount)} transferred)
@@ -722,19 +736,19 @@ export default function SplitAndEscrowTab({
       <Modal isOpen={newSplitOpen} onClose={() => setNewSplitOpen(false)} title="Create Bill Split">
         <form onSubmit={handleCreateSplit} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1">Expense Title</label>
+            <label className="block text-xs font-medium text-slate-300 mb-1.5">Expense Title</label>
             <input
               type="text"
               required
               value={splitTitle}
               onChange={(e) => setSplitTitle(e.target.value)}
               placeholder="e.g. Rooftop BBQ Dinner"
-              className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white outline-none focus:border-emerald-500"
+              className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-2xl text-sm text-white outline-none focus:border-emerald-500"
             />
           </div>
 
-          <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1">Total Bill Amount (VGC)</label>
+          <div className="space-y-1.5">
+            <label className="block text-xs font-medium text-slate-300">Total Bill Amount (VGC)</label>
             <input
               type="text"
               inputMode="numeric"
@@ -742,12 +756,13 @@ export default function SplitAndEscrowTab({
               value={splitTotal}
               onChange={(e) => setSplitTotal(sanitizeIntegerInput(e.target.value))}
               placeholder="e.g. 3000"
-              className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-base font-mono font-bold text-white outline-none focus:border-emerald-500"
+              className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-2xl text-xl font-mono font-bold text-white outline-none focus:border-emerald-500"
             />
+            <AmountPresets presets={[500, 1000, 2000, 3000, 5000]} onSelect={(v) => setSplitTotal(v)} />
           </div>
 
           <div>
-            <div className="flex items-center justify-between mb-1.5">
+            <div className="flex items-center justify-between mb-2">
               <label className="text-xs font-medium text-slate-300">Select Friends in Split</label>
               <label className="inline-flex items-center gap-1.5 text-xs text-emerald-300 cursor-pointer">
                 <input
@@ -756,7 +771,7 @@ export default function SplitAndEscrowTab({
                   onChange={(e) => setIncludeCreator(e.target.checked)}
                   className="rounded border-slate-700 text-emerald-500 focus:ring-0"
                 />
-                <span>Include me in the share</span>
+                <span>Include my share</span>
               </label>
             </div>
             <div className="grid grid-cols-2 gap-2">
@@ -767,13 +782,16 @@ export default function SplitAndEscrowTab({
                     key={f.id}
                     type="button"
                     onClick={() => toggleFriendSelection(f.id)}
-                    className={`p-2.5 rounded-xl border text-left text-xs font-medium flex items-center justify-between ${
+                    className={`p-2.5 rounded-2xl border text-left text-xs font-medium flex items-center justify-between transition-all ${
                       checked
                         ? 'bg-emerald-600/20 border-emerald-500 text-emerald-200'
-                        : 'bg-slate-950 border-slate-800 text-slate-400'
+                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
                     }`}
                   >
-                    <span className="truncate">{f.full_name}</span>
+                    <div className="flex items-center gap-2 truncate">
+                      <Avatar name={f.full_name} id={f.id} size="xs" />
+                      <span className="truncate">{f.full_name}</span>
+                    </div>
                     {checked && <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />}
                   </button>
                 );
@@ -782,7 +800,7 @@ export default function SplitAndEscrowTab({
           </div>
 
           {liveSharesPreview.length > 0 && (
-            <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5">
+            <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 space-y-1.5">
               <div className="text-xs font-semibold text-slate-300">
                 Exact Remainder Split Preview (Sum = {formatVGC(splitTotal)}):
               </div>
@@ -802,7 +820,7 @@ export default function SplitAndEscrowTab({
           <button
             type="submit"
             disabled={creatingSplit || liveSharesPreview.length === 0}
-            className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white font-semibold rounded-xl text-sm flex items-center justify-center gap-2"
+            className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 active:scale-95 disabled:opacity-40 text-white font-bold rounded-2xl text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/50 transition-all"
           >
             {creatingSplit && <Spinner />}
             <span>Create Split & Notify Friends</span>
@@ -818,7 +836,7 @@ export default function SplitAndEscrowTab({
       >
         {payShareTarget && (
           <form onSubmit={handlePayShare} className="space-y-4">
-            <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 text-xs space-y-1">
+            <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 text-xs space-y-1.5">
               <div className="text-slate-400">
                 Bill: <strong className="text-white">{payShareTarget.split.title}</strong>
               </div>
@@ -839,7 +857,7 @@ export default function SplitAndEscrowTab({
             <button
               type="submit"
               disabled={payingShare || payPin.length !== 4}
-              className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white font-semibold rounded-xl text-sm flex items-center justify-center gap-2"
+              className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 active:scale-95 disabled:opacity-40 text-white font-bold rounded-2xl text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/50 transition-all"
             >
               {payingShare && <Spinner />}
               <span>Authorize & Pay {formatVGC(payShareTarget.participant.share_amount)}</span>
@@ -852,13 +870,13 @@ export default function SplitAndEscrowTab({
       <Modal isOpen={newMatchOpen} onClose={() => setNewMatchOpen(false)} title="Create 1v1 Escrow Match">
         <form onSubmit={handleCreateMatch} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1">Match Title</label>
+            <label className="block text-xs font-medium text-slate-300 mb-1.5">Match Title</label>
             <input
               type="text"
               required
               value={matchTitle}
               onChange={(e) => setMatchTitle(e.target.value)}
-              className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white outline-none focus:border-emerald-500"
+              className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-2xl text-sm text-white outline-none focus:border-emerald-500"
             />
             <div className="flex flex-wrap gap-1.5 mt-2">
               {MATCH_SUGGESTIONS.map((s) => (
@@ -866,7 +884,7 @@ export default function SplitAndEscrowTab({
                   key={s}
                   type="button"
                   onClick={() => setMatchTitle(s)}
-                  className="px-2 py-0.5 rounded-full bg-slate-800 hover:bg-slate-700 text-[11px] text-slate-300"
+                  className="px-2.5 py-1 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-xs text-slate-300 hover:text-white transition-colors"
                 >
                   {s}
                 </button>
@@ -875,22 +893,22 @@ export default function SplitAndEscrowTab({
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1">Select Opponent</label>
+            <label className="block text-xs font-medium text-slate-300 mb-1.5">Select Opponent</label>
             <select
               value={matchOpponentId}
               onChange={(e) => setMatchOpponentId(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white outline-none focus:border-emerald-500"
+              className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-2xl text-sm text-white outline-none focus:border-emerald-500"
             >
               {activeFriends.map((f) => (
                 <option key={f.id} value={f.id}>
-                  {f.full_name}
+                  {f.full_name} ({f.role})
                 </option>
               ))}
             </select>
           </div>
 
-          <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1">
+          <div className="space-y-1.5">
+            <label className="block text-xs font-medium text-slate-300">
               Wager Stake per Player (Available: {formatVGC(myBalance.available_vgc_balance)})
             </label>
             <input
@@ -900,10 +918,15 @@ export default function SplitAndEscrowTab({
               value={matchWager}
               onChange={(e) => setMatchWager(sanitizeIntegerInput(e.target.value))}
               placeholder="e.g. 500"
-              className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-base font-mono font-bold text-white outline-none focus:border-emerald-500"
+              className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-2xl text-xl font-mono font-bold text-white outline-none focus:border-emerald-500"
+            />
+            <AmountPresets
+              presets={[100, 250, 500, 1000]}
+              onSelect={(val) => setMatchWager(val)}
+              maxAmount={myBalance.available_vgc_balance}
             />
             {matchWager && (
-              <div className="text-[11px] text-emerald-400 mt-1 font-mono">
+              <div className="text-xs text-emerald-400 mt-1 font-mono">
                 Total Winner Pot: {formatVGC(Number(matchWager) * 2)} (Your {formatVGC(matchWager)} locks immediately)
               </div>
             )}
@@ -917,7 +940,7 @@ export default function SplitAndEscrowTab({
               !parsePositiveInt(matchWager) ||
               parsePositiveInt(matchWager) > myBalance.available_vgc_balance
             }
-            className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white font-semibold rounded-xl text-sm flex items-center justify-center gap-2"
+            className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 active:scale-95 disabled:opacity-40 text-white font-bold rounded-2xl text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/50 transition-all"
           >
             {creatingMatch && <Spinner />}
             <span>Lock Stake & Send Challenge</span>

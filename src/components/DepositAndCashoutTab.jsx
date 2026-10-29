@@ -5,7 +5,10 @@ import {
   FileCheck2,
   CheckCircle2,
   XCircle,
-  Clock
+  Clock,
+  Coins,
+  ShieldAlert,
+  ArrowRight
 } from 'lucide-react';
 import { api } from '../lib/supabase.js';
 import { compressReceipt } from '../lib/imageCompressor.js';
@@ -19,7 +22,7 @@ import {
   formatRelativeTime,
   PEG_PKR_PER_VGC
 } from '../lib/format.js';
-import { Badge, ProgressBar, EmptyState, Spinner, useToast } from './ui.jsx';
+import { Badge, ProgressBar, EmptyState, Spinner, useToast, AmountPresets } from './ui.jsx';
 
 export default function DepositAndCashoutTab({
   currentUser,
@@ -231,14 +234,14 @@ export default function DepositAndCashoutTab({
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* LEFT COLUMN: MONTHLY DEPOSIT CLAIM */}
       <div className="space-y-6">
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+        <div className="bg-slate-900/80 border border-slate-800/90 rounded-3xl p-5 sm:p-6 space-y-4 shadow-xl">
           <div>
-            <h3 className="text-base font-semibold text-white flex items-center gap-2">
-              <Upload className="w-4 h-4 text-emerald-400" />
+            <h3 className="text-base font-bold text-white flex items-center gap-2">
+              <Upload className="w-5 h-5 text-emerald-400" />
               <span>Submit Monthly Deposit Claim</span>
             </h3>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Deposit real PKR into the committee bank/EasyPaisa account, then upload your receipt to mint VGC.
+            <p className="text-xs text-slate-400 mt-1">
+              Deposit real PKR into the committee pool, then submit your proof to mint VGC tokens.
             </p>
           </div>
 
@@ -258,9 +261,9 @@ export default function DepositAndCashoutTab({
                       type="button"
                       disabled={isDisabled}
                       onClick={() => setSelectedMonth(m)}
-                      className={`p-2.5 rounded-xl border text-left transition-all ${
+                      className={`p-3 rounded-2xl border text-left transition-all ${
                         isSelected && !isDisabled
-                          ? 'bg-emerald-600/20 border-emerald-500 text-white'
+                          ? 'bg-emerald-600/20 border-emerald-500 text-white shadow-sm'
                           : isDisabled
                           ? 'bg-slate-950/50 border-slate-800/60 text-slate-500 cursor-not-allowed'
                           : 'bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700'
@@ -280,10 +283,10 @@ export default function DepositAndCashoutTab({
 
             <div>
               <label className="block text-xs font-medium text-slate-300 mb-1">
-                Fixed Monthly Contribution (Locked)
+                Fixed Monthly Contribution (Committee Rule)
               </label>
-              <div className="px-3.5 py-2.5 bg-slate-950/80 border border-slate-800 rounded-xl flex items-center justify-between">
-                <span className="font-mono font-bold text-emerald-400">
+              <div className="px-4 py-3 bg-slate-950 border border-slate-800 rounded-2xl flex items-center justify-between">
+                <span className="font-mono font-bold text-emerald-400 text-base">
                   {formatVGC(fixedContribution)}
                 </span>
                 <span className="text-xs font-mono text-slate-400">
@@ -293,7 +296,7 @@ export default function DepositAndCashoutTab({
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">
+              <label className="block text-xs font-medium text-slate-300 mb-1.5">
                 Bank / EasyPaisa Reference Number
               </label>
               <input
@@ -302,19 +305,19 @@ export default function DepositAndCashoutTab({
                 value={referenceNo}
                 onChange={(e) => setReferenceNo(e.target.value)}
                 placeholder="e.g. EP-202610-94821"
-                className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm font-mono text-white outline-none focus:border-emerald-500"
+                className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-2xl text-sm font-mono text-white outline-none focus:border-emerald-500"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">
-                Receipt Image (Auto-compressed to ≤ 50KB WebP)
+              <label className="block text-xs font-medium text-slate-300 mb-1.5">
+                Receipt Screenshot (Auto-compressed to WebP)
               </label>
               <input
                 type="file"
                 accept="image/*"
                 onChange={handleFileChange}
-                className="w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-3.5 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-emerald-600/20 file:text-emerald-300 hover:file:bg-emerald-600/30"
+                className="w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-emerald-600/20 file:text-emerald-300 hover:file:bg-emerald-600/30 cursor-pointer"
               />
 
               {compressing && (
@@ -325,19 +328,19 @@ export default function DepositAndCashoutTab({
               )}
 
               {compressedInfo && (
-                <div className="mt-3 p-3 rounded-xl bg-slate-950 border border-slate-800 flex items-center gap-3">
+                <div className="mt-3 p-3.5 rounded-2xl bg-slate-950 border border-slate-800 flex items-center gap-3">
                   <img
                     src={compressedInfo.previewUrl}
                     alt="Receipt preview"
-                    className="w-16 h-16 object-cover rounded-lg border border-slate-700"
+                    className="w-16 h-16 object-cover rounded-xl border border-slate-700"
                   />
                   <div className="text-xs space-y-1">
                     <div className="font-semibold text-emerald-300 flex items-center gap-1">
                       <FileCheck2 className="w-3.5 h-3.5" />
-                      <span>WebP Ready for Upload</span>
+                      <span>Ready for Upload</span>
                     </div>
                     <div className="text-slate-400 font-mono">
-                      Before: {(compressedInfo.originalSize / 1024).toFixed(1)} KB → After:{' '}
+                      {(compressedInfo.originalSize / 1024).toFixed(1)} KB →{' '}
                       <strong className="text-white">
                         {(compressedInfo.compressedSize / 1024).toFixed(1)} KB
                       </strong>
@@ -356,7 +359,7 @@ export default function DepositAndCashoutTab({
                 !referenceNo.trim() ||
                 !compressedInfo
               }
-              className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white font-semibold rounded-xl text-sm flex items-center justify-center gap-2"
+              className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white font-bold rounded-2xl text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/60 transition-all active:scale-95"
             >
               {submittingClaim && <Spinner />}
               <span>Submit Deposit Claim ({formatVGC(fixedContribution)})</span>
@@ -365,8 +368,8 @@ export default function DepositAndCashoutTab({
         </div>
 
         {/* MY DEPOSIT CLAIMS HISTORY */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
-          <h4 className="text-sm font-semibold text-slate-200">My Deposit Claim History</h4>
+        <div className="bg-slate-900/80 border border-slate-800/90 rounded-3xl p-5 sm:p-6 space-y-3 shadow-xl">
+          <h4 className="text-sm font-bold text-white">My Deposit Claim History</h4>
           {myClaims.length === 0 ? (
             <EmptyState title="No deposit claims yet" description="Your monthly deposit claims and verification statuses will appear here." />
           ) : (
@@ -374,7 +377,7 @@ export default function DepositAndCashoutTab({
               {myClaims.map((c) => (
                 <div
                   key={c.id}
-                  className="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800 flex items-start justify-between gap-3"
+                  className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 flex items-start justify-between gap-3"
                 >
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
@@ -411,15 +414,14 @@ export default function DepositAndCashoutTab({
 
       {/* RIGHT COLUMN: CASH-OUT / GROUP EXPENSE BURN */}
       <div className="space-y-6">
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+        <div className="bg-slate-900/80 border border-slate-800/90 rounded-3xl p-5 sm:p-6 space-y-4 shadow-xl">
           <div>
-            <h3 className="text-base font-semibold text-white flex items-center gap-2">
-              <Flame className="w-4 h-4 text-amber-400" />
+            <h3 className="text-base font-bold text-white flex items-center gap-2">
+              <Flame className="w-5 h-5 text-amber-400" />
               <span>Request Cash-Out / Group Expense Burn</span>
             </h3>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Burning VGC reserves your tokens immediately and pays out real PKR from the Vagafund once{' '}
-              {approvalsRequired} members (including 1 admin) approve.
+            <p className="text-xs text-slate-400 mt-1">
+              Burn VGC to receive real PKR payout from the Vagafund pool upon consensus ({approvalsRequired} member approvals).
             </p>
           </div>
 
@@ -428,34 +430,37 @@ export default function DepositAndCashoutTab({
               <button
                 type="button"
                 onClick={() => setBurnKind('CASHOUT')}
-                className={`p-3 rounded-xl border text-left text-xs transition-all ${
+                className={`p-3.5 rounded-2xl border text-left text-xs transition-all ${
                   burnKind === 'CASHOUT'
-                    ? 'bg-amber-500/15 border-amber-500 text-amber-200'
-                    : 'bg-slate-950 border-slate-800 text-slate-400'
+                    ? 'bg-amber-500/15 border-amber-500 text-amber-200 shadow-sm'
+                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
                 }`}
               >
                 <div className="font-semibold text-white">Personal Cash-Out</div>
-                <div className="text-[11px] mt-0.5">Redeem your VGC for PKR transfer</div>
+                <div className="text-[11px] mt-0.5 text-slate-400">Redeem personal VGC for PKR payout</div>
               </button>
 
               <button
                 type="button"
                 onClick={() => setBurnKind('GROUP_EXPENSE')}
-                className={`p-3 rounded-xl border text-left text-xs transition-all ${
+                className={`p-3.5 rounded-2xl border text-left text-xs transition-all ${
                   burnKind === 'GROUP_EXPENSE'
-                    ? 'bg-amber-500/15 border-amber-500 text-amber-200'
-                    : 'bg-slate-950 border-slate-800 text-slate-400'
+                    ? 'bg-amber-500/15 border-amber-500 text-amber-200 shadow-sm'
+                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
                 }`}
               >
                 <div className="font-semibold text-white">Group Expense Burn</div>
-                <div className="text-[11px] mt-0.5">Burn pooled split VGC to pay vendor</div>
+                <div className="text-[11px] mt-0.5 text-slate-400">Burn collected split VGC to pay vendor</div>
               </button>
             </div>
 
-            <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">
-                Burn Amount (Available: {formatVGC(myBalance.available_vgc_balance)})
-              </label>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-xs">
+                <label className="font-medium text-slate-300">Burn Amount (Whole VGC)</label>
+                <span className="text-slate-400 font-mono">
+                  Available: <strong className="text-emerald-400">{formatVGC(myBalance.available_vgc_balance)}</strong>
+                </span>
+              </div>
               <input
                 type="text"
                 inputMode="numeric"
@@ -463,26 +468,31 @@ export default function DepositAndCashoutTab({
                 value={burnAmount}
                 onChange={(e) => setBurnAmount(sanitizeIntegerInput(e.target.value))}
                 placeholder="e.g. 1000"
-                className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-base font-mono font-bold text-white outline-none focus:border-amber-500"
+                className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-2xl text-xl font-mono font-bold text-white outline-none focus:border-amber-500"
+              />
+              <AmountPresets
+                presets={[250, 500, 1000, 2000]}
+                onSelect={(val) => setBurnAmount(val)}
+                maxAmount={myBalance.available_vgc_balance}
               />
               {burnAmount && (
-                <div className="text-xs text-amber-300 font-mono mt-1">
-                  PKR Payout from Vault: {formatPKR(burnAmount, peg)}
+                <div className="text-xs text-amber-300 font-mono pt-1">
+                  Vault Payout: {formatPKR(burnAmount, peg)}
                 </div>
               )}
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">
-                Reason / Payout Instructions
+              <label className="block text-xs font-medium text-slate-300 mb-1.5">
+                Payout Instructions / Reason
               </label>
               <input
                 type="text"
                 required
                 value={burnReason}
                 onChange={(e) => setBurnReason(e.target.value)}
-                placeholder="e.g. EasyPaisa payout or Catering vendor bill"
-                className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white outline-none focus:border-amber-500"
+                placeholder="e.g. EasyPaisa account number or vendor invoice"
+                className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-2xl text-sm text-white outline-none focus:border-amber-500"
               />
             </div>
 
@@ -494,25 +504,25 @@ export default function DepositAndCashoutTab({
                 parsePositiveInt(burnAmount) > myBalance.available_vgc_balance ||
                 !burnReason.trim()
               }
-              className="w-full py-2.5 bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-white font-semibold rounded-xl text-sm flex items-center justify-center gap-2"
+              className="w-full py-3 bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-white font-bold rounded-2xl text-sm flex items-center justify-center gap-2 shadow-lg shadow-amber-950/60 transition-all active:scale-95"
             >
               {submittingBurn && <Spinner />}
-              <span>Reserve VGC & Request Burn</span>
+              <span>Reserve Tokens & Submit Burn Request</span>
             </button>
           </form>
         </div>
 
         {/* GROUP BURN CONSENSUS QUEUE */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
+        <div className="bg-slate-900/80 border border-slate-800/90 rounded-3xl p-5 sm:p-6 space-y-3 shadow-xl">
           <div className="flex items-center justify-between">
-            <h4 className="text-sm font-semibold text-slate-200">Burn Consensus Queue</h4>
+            <h4 className="text-sm font-bold text-white">Consensus Approval Queue</h4>
             <span className="text-xs text-slate-400">
-              Requires {approvalsRequired} approvals (incl. 1 Admin)
+              Needs {approvalsRequired} member approvals
             </span>
           </div>
 
           {burnRequests.length === 0 ? (
-            <EmptyState title="No burn requests" description="Cash-out and group-expense burns appear here for member consensus." />
+            <EmptyState title="No active burn requests" description="Cash-out and group-expense burns appear here for member voting." />
           ) : (
             <div className="space-y-3">
               {burnRequests.map((b) => {
@@ -527,7 +537,7 @@ export default function DepositAndCashoutTab({
                 return (
                   <div
                     key={b.id}
-                    className="p-4 rounded-xl bg-slate-950/80 border border-slate-800 space-y-3"
+                    className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-3"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div>
@@ -576,7 +586,7 @@ export default function DepositAndCashoutTab({
                             type="button"
                             disabled={busyBurnId === b.id}
                             onClick={() => handleApproveBurn(b.id)}
-                            className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg flex items-center gap-1"
+                            className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl flex items-center gap-1.5 transition-all shadow"
                           >
                             {busyBurnId === b.id && <Spinner />}
                             <CheckCircle2 className="w-3.5 h-3.5" />
@@ -593,7 +603,7 @@ export default function DepositAndCashoutTab({
                             type="button"
                             disabled={busyBurnId === b.id}
                             onClick={() => handleCancelBurn(b.id)}
-                            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium rounded-lg flex items-center gap-1"
+                            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium rounded-xl flex items-center gap-1 transition-colors"
                           >
                             <XCircle className="w-3.5 h-3.5" />
                             <span>Cancel Request</span>

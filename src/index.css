@@ -4,9 +4,70 @@
 
 @layer base {
   html, body {
-    @apply bg-slate-950 text-slate-100 min-h-screen;
+    @apply bg-slate-950 text-slate-100 min-h-screen selection:bg-emerald-500/30 selection:text-emerald-200 antialiased;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
+}
+
+/* Glassmorphism and glow utilities */
+.glass-panel {
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.75) 0%, rgba(2, 6, 23, 0.85) 100%);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-card {
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.5) 0%, rgba(15, 23, 42, 0.6) 100%);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.glass-card-interactive {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.glass-card-interactive:hover {
+  transform: translateY(-2px);
+  border-color: rgba(16, 185, 129, 0.35);
+  box-shadow: 0 12px 30px -10px rgba(16, 185, 129, 0.15);
+}
+
+/* Luxury card gradient */
+.wallet-card-gradient {
+  background: radial-gradient(120% 120% at 90% 10%, rgba(16, 185, 129, 0.25) 0%, transparent 60%),
+              radial-gradient(100% 100% at 10% 90%, rgba(20, 184, 166, 0.2) 0%, transparent 60%),
+              linear-gradient(135deg, #064e3b 0%, #0f172a 50%, #022c22 100%);
+  box-shadow: 0 20px 40px -15px rgba(5, 150, 105, 0.25), 0 0 0 1px rgba(52, 211, 153, 0.25);
+}
+
+/* Subtle Shimmer effect */
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.shimmer-effect {
+  position: relative;
+  overflow: hidden;
+}
+.shimmer-effect::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.06), transparent);
+  transform: translateX(-100%);
+  animation: shimmer 3s infinite;
+}
+
+/* Pulse glow for live indicators */
+@keyframes pulseGlow {
+  0%, 100% { opacity: 1; transform: scale(1); filter: drop-shadow(0 0 4px rgba(16, 185, 129, 0.6)); }
+  50% { opacity: 0.6; transform: scale(0.92); filter: drop-shadow(0 0 1px rgba(16, 185, 129, 0.2)); }
+}
+
+.pulse-glow {
+  animation: pulseGlow 2.5s ease-in-out infinite;
 }
 
 /* Custom subtle scrollbars */
@@ -15,10 +76,10 @@
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.6);
+  background: rgba(15, 23, 42, 0.5);
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(51, 65, 85, 0.8);
+  background: rgba(51, 65, 85, 0.7);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
