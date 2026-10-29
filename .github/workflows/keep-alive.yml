@@ -1,0 +1,25 @@
+# GitHub Actions Keep-Alive for Supabase Free Tier
+# Note: GitHub automatically disables scheduled workflows after 60 days of repository
+# inactivity (re-enable in Actions tab or push a commit occasionally). You should also
+# open the Supabase Dashboard occasionally to prevent project pausing.
+
+name: Supabase Keep-Alive Ping
+
+on:
+  schedule:
+    - cron: '0 3 */4 * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase get_ping() RPC
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          curl --fail --silent --show-error -X POST "$SUPABASE_URL/rest/v1/rpc/get_ping" \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{}'
